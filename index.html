@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NurseResume Lab — Hospitals Map</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
+  <style>
+    html, body { height: 100%; margin: 0; }
+    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+    .legend {
+      position: absolute; z-index: 2; bottom: 14px; left: 14px;
+      background: rgba(0,0,0,0.6); color: #ffcc33; padding: 10px 12px;
+      border-radius: 6px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      font-size: 12px; line-height: 1.3;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    .legend .dot { width: 10px; height: 10px; border-radius: 50%; background: #ffcc33; display: inline-block; margin-right: 6px; }
+    .mapboxgl-popup-content { font: 12px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial; }
+    .mapboxgl-popup-content h3 { margin: 0 0 4px; font-size: 14px; }
+    .mapboxgl-popup-content .meta { color: #94a3b8; margin-bottom: 6px; }
+    .mapboxgl-popup-content a { color: #ffcc33; text-decoration: none; font-weight: 600; }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div class="legend"><span class="dot"></span><b>NurseResume Lab</b> — Hospitals</div>
+
+<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+<script>
+  mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+
+  const map = new mapboxgl.Map({
+    container: 'map',
+    style: 'mapbox://styles/mapbox/satellite-v9',
+    center: [-98.5795, 39.8283],
+    zoom: 3.2
+  });
+
+  map.addControl(new mapboxgl.NavigationControl());
+
+  map.on('load', () => {
+    // Darken / desaturate satellite for the look in your screenshot
+    try {
+      map.setPaintProperty('satellite', 'raster-saturation', -1);
+      map.setPaintProperty('satellite', 'raster-brightness-min', 0.15);
+      map.setPaintProperty('satellite', 'raster-contrast', 0.25);
+    } catch(e) {}
+
+    // Hospitals tileset source
+    map.addSource('hospitals-tiles', {
+      type: 'vector',
+      url: 'mapbox://YOUR_USERNAME.YOUR_TILESET_ID'
+    });
+
+    // Glow under icons
+    map.addLayer({
+      id: 'hospital-glow',
+      type: 'circle',
+      source: 'hospitals-tiles',
+      'source-layer': 'YOUR_SOURCE_LAYER',
+      minzoom: 2,
+      paint: {
+        'circle-color': '#ffcc33',
+        'circle-opacity': ['interpolate', ['linear'], ['zoom'], 2, 0.10, 8, 0.15, 12, 0.20],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 2, 8, 6, 12, 10],
+        'circle-blur': 0.6
+      }
+    });
+
+    // Icons + labels
+    map.addLayer({
+      id: 'hospitals',
+      type: 'symbol',
+      source: 'hospitals-tiles',
+      'source-layer': 'YOUR_SOURCE_LAYER',
+      minzoom: 2,
+      layout: {
+        'icon-image': 'hospital-15',
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.9, 12, 1.25, 16, 1.5],
+        'icon-allow-overlap': true,
+        'text-field': ['get', 'name'],
+        'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 12, 14],
+        'text-offset': [0, 1.1],
+        'text-anchor': 'top'
+      },
+      paint: {
+        'icon-color': '#ffcc33',
+        'text-color': '#ffcc33',
+        'text-halo-color': '#0b0f14',
+        'text-halo-width': 1
+      }
+    });
+
+    // Cursor + popup
+    map.on('mouseenter', 'hospitals', () => map.getCanvas().style.cursor = 'pointer');
+    map.on('mouseleave', 'hospitals', () => map.getCanvas().style.cursor = '');
+
+    const popup = new mapboxgl.Popup({ offset: 10, closeButton: false });
+    map.on('click', 'hospitals', (e) => {
+      const f = e.features && e.features[0];
+      if (!f) return;
+      const p = f.properties || {};
+      const roles = tryParseArray(p.roles).join(', ');
+      const licenses = tryParseArray(p.licenses).join(', ');
+      const hiring = (p.hiring === true || p.hiring === 'true') ? 'Yes' :
+                     (p.hiring === false || p.hiring === 'false') ? 'No' : '—';
+      const cityState = [p.city, p.state || p.state_abbr].filter(Boolean).join(', ');
+      popup.setLngLat(e.lngLat).setHTML(`
+        <h3>${p.name || 'Hospital'}</h3>
+        <div class="meta">${cityState}</div>
+        <div><b>Hiring:</b> ${hiring}</div>
+        <div><b>Roles:</b> ${roles || '—'}</div>
+        <div><b>Licenses:</b> ${licenses || '—'}</div>
+        ${p.apply_url ? `<div style="margin-top:6px;"><a href="${p.apply_url}" target="_blank">Apply via NurseResume Lab →</a></div>` : ''}
+      `).addTo(map);
+    });
+
+    function tryParseArray(v) {
+      try {
+        if (Array.isArray(v)) return v;
+        return JSON.parse(v);
+      } catch(e) { return []; }
+    }
+  });
+</script>
+</body>
+</html>
