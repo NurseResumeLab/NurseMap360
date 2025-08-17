@@ -1,129 +1,285 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>NurseResume Lab — Hospitals Map</title>
-  <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-  <style>
-    html, body { height: 100%; margin: 0; }
-    #map { position: absolute; top: 0; bottom: 0; width: 100%; }
-    .legend {
-      position: absolute; z-index: 2; bottom: 14px; left: 14px;
-      background: rgba(0,0,0,0.6); color: #ffcc33; padding: 10px 12px;
-      border-radius: 6px; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      font-size: 12px; line-height: 1.3;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-    }
-    .legend .dot { width: 10px; height: 10px; border-radius: 50%; background: #ffcc33; display: inline-block; margin-right: 6px; }
-    .mapboxgl-popup-content { font: 12px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Arial; }
-    .mapboxgl-popup-content h3 { margin: 0 0 4px; font-size: 14px; }
-    .mapboxgl-popup-content .meta { color: #94a3b8; margin-bottom: 6px; }
-    .mapboxgl-popup-content a { color: #ffcc33; text-decoration: none; font-weight: 600; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nurse Resume Lab — Hiring Hospitals Map</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<style>
+  :root{
+    --bg:#f7f7fb;
+    --card:#ffffff;
+    --ink:#1f2937;
+    --muted:#6b7280;
+    --accent:#ef4444; /* subtle red accent */
+    --border:#e5e7eb;
+    --shadow: 0 10px 30px rgba(0,0,0,.06);
+  }
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:linear-gradient(180deg,#fbfbfe, #f4f6fb);
+    color:var(--ink);
+    font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Noto Sans",Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+  }
+  header{
+    display:flex; align-items:center; gap:.75rem;
+    padding:18px 22px; border-bottom:1px solid var(--border);
+    background:var(--card); position:sticky; top:0; z-index:5;
+    box-shadow: 0 3px 15px rgba(0,0,0,.03);
+  }
+  header .dot{
+    width:12px; height:12px; border-radius:50%; background:var(--accent);
+    box-shadow:0 0 0 3px rgba(239,68,68,.15);
+  }
+  header h1{font-size:18px; margin:0; font-weight:700}
+  header p{margin:0; color:var(--muted); font-size:14px}
+  .container{
+    display:grid; grid-template-columns: 1fr min(380px, 33vw);
+    gap:0; height:calc(100% - 66px);
+  }
+  #map-wrap{
+    position:relative; overflow:hidden;
+    background:var(--bg);
+  }
+  #map{
+    width:100%; height:100%;
+    display:block;
+  }
+  .legend{
+    position:absolute; left:14px; bottom:14px; padding:10px 12px;
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    box-shadow:var(--shadow); font-size:12px; color:var(--muted);
+  }
+  .legend h4{margin:0 0 6px; font-size:12px; color:var(--ink)}
+  .legend .swatches{display:flex; gap:6px; flex-wrap:wrap; max-width:210px}
+  .legend .swatch{width:16px; height:10px; border-radius:3px; border:1px solid rgba(0,0,0,.08)}
+  .tooltip{
+    position:absolute; pointer-events:none; transform:translate(-50%,-120%);
+    background:#111827; color:#fff; padding:6px 8px; border-radius:7px; font-size:12px;
+    box-shadow:0 6px 18px rgba(0,0,0,.18); white-space:nowrap; opacity:0; transition:opacity .12s;
+  }
+  /* Right panel */
+  aside{
+    border-left:1px solid var(--border);
+    background:var(--card); height:100%; overflow:auto;
+    box-shadow: -6px 0 20px rgba(0,0,0,.03);
+  }
+  .panel-head{
+    position:sticky; top:0; background:var(--card); z-index:2;
+    padding:18px; border-bottom:1px solid var(--border);
+  }
+  .state-title{margin:0; font-size:18px}
+  .state-sub{margin:4px 0 0; color:var(--muted); font-size:13px}
+  .list{
+    display:grid; gap:12px; padding:16px;
+  }
+  .card{
+    background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:12px 12px;
+  }
+  .card h3{margin:0 0 6px; font-size:14px}
+  .meta{font-size:12px; color:var(--muted); margin:0 0 6px}
+  .tags{display:flex; gap:6px; flex-wrap:wrap}
+  .tag{font-size:11px; background:#fff; border:1px solid var(--border); border-radius:999px; padding:3px 8px}
+  .empty-note{padding:18px; color:var(--muted); font-size:13px}
+  /* SVG visual polish */
+  .state { stroke:#ffffff; stroke-width:1; }
+  .state:hover { filter:brightness(1.03); cursor:pointer; }
+  .borders { fill:none; stroke:#ffffff; stroke-width:1.2; pointer-events:none; }
+  .hospital { stroke:#0f172a; stroke-width:.6; }
+  .hospital:hover { filter:brightness(.95); }
+  .zoom-hint{
+    position:absolute; right:14px; bottom:14px; background:#111827; color:#fff;
+    font-size:12px; padding:6px 8px; border-radius:8px; opacity:.85
+  }
+  @media (max-width:960px){
+    .container{grid-template-columns: 1fr}
+    aside{height:50vh}
+  }
+</style>
 </head>
 <body>
-<div id="map"></div>
-<div class="legend"><span class="dot"></span><b>NurseResume Lab</b> — Hospitals</div>
+<header>
+  <span class="dot"></span>
+  <div>
+    <h1>Nurse Resume Lab — Nurse & Scrub Tech Hiring Map</h1>
+    <p>Click a state to see 10 hiring medical centers. Drag to pan • scroll/pinch to zoom.</p>
+  </div>
+</header>
 
-<script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
+<div class="container">
+  <div id="map-wrap">
+    <svg id="map" viewBox="0 0 975 610" aria-label="United States hiring hospitals map"></svg>
+    <div class="tooltip" id="tooltip"></div>
+    <div class="legend" id="legend">
+      <h4>State color families</h4>
+      <div class="swatches" id="swatches"></div>
+    </div>
+    <div class="zoom-hint">Zoom · Pan</div>
+  </div>
+
+  <aside>
+    <div class="panel-head">
+      <h2 class="state-title" id="panel-title">Select a state</h2>
+      <p class="state-sub" id="panel-sub">You’ll see 10 hiring medical centers here.</p>
+    </div>
+    <div id="list" class="list"></div>
+  </aside>
+</div>
+
+<!-- D3 + TopoJSON from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
 <script>
-  mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+(async function(){
+  // ---------- Config ----------
+  const svg = d3.select("#map");
+  const g = svg.append("g");
+  const width = 975, height = 610;
 
-  const map = new mapboxgl.Map({
-    container: 'map',
-    style: 'mapbox://styles/mapbox/satellite-v9',
-    center: [-98.5795, 39.8283],
-    zoom: 3.2
-  });
+  // Pleasant color families (pastel, varied but cohesive)
+  const palette = [
+    "#c9e4de","#fde2e4","#c6def1","#e2f0cb","#f7d6e0",
+    "#e9d5ff","#ffe5b4","#d1f1e0","#ffd8e1","#d5e4ff",
+    "#f8f3d6","#d6e2e9","#ffedd5","#e7e5e4","#e1f0ff"
+  ];
 
-  map.addControl(new mapboxgl.NavigationControl());
+  // Prepare legend chips
+  const sw = d3.select("#swatches");
+  palette.forEach(c => sw.append("div").attr("class","swatch").style("background", c));
 
-  map.on('load', () => {
-    // Darken / desaturate satellite for the look in your screenshot
-    try {
-      map.setPaintProperty('satellite', 'raster-saturation', -1);
-      map.setPaintProperty('satellite', 'raster-brightness-min', 0.15);
-      map.setPaintProperty('satellite', 'raster-contrast', 0.25);
-    } catch(e) {}
+  // Projection & path
+  const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(1280);
+  const path = d3.geoPath(projection);
 
-    // Hospitals tileset source
-    map.addSource('hospitals-tiles', {
-      type: 'vector',
-      url: 'mapbox://YOUR_USERNAME.YOUR_TILESET_ID'
-    });
+  // Load US states TopoJSON
+  const topo = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r=>r.json());
+  const geo = topojson.feature(topo, topo.objects.states);
+  const borders = topojson.mesh(topo, topo.objects.states, (a,b)=>a!==b);
 
-    // Glow under icons
-    map.addLayer({
-      id: 'hospital-glow',
-      type: 'circle',
-      source: 'hospitals-tiles',
-      'source-layer': 'YOUR_SOURCE_LAYER',
-      minzoom: 2,
-      paint: {
-        'circle-color': '#ffcc33',
-        'circle-opacity': ['interpolate', ['linear'], ['zoom'], 2, 0.10, 8, 0.15, 12, 0.20],
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 2, 8, 6, 12, 10],
-        'circle-blur': 0.6
-      }
-    });
+  // State name lookup
+  const nameById = new Map([
+    [1,"Alabama"],[2,"Alaska"],[4,"Arizona"],[5,"Arkansas"],[6,"California"],[8,"Colorado"],[9,"Connecticut"],
+    [10,"Delaware"],[11,"District of Columbia"],[12,"Florida"],[13,"Georgia"],[15,"Hawaii"],[16,"Idaho"],[17,"Illinois"],
+    [18,"Indiana"],[19,"Iowa"],[20,"Kansas"],[21,"Kentucky"],[22,"Louisiana"],[23,"Maine"],[24,"Maryland"],[25,"Massachusetts"],
+    [26,"Michigan"],[27,"Minnesota"],[28,"Mississippi"],[29,"Missouri"],[30,"Montana"],[31,"Nebraska"],[32,"Nevada"],
+    [33,"New Hampshire"],[34,"New Jersey"],[35,"New Mexico"],[36,"New York"],[37,"North Carolina"],[38,"North Dakota"],
+    [39,"Ohio"],[40,"Oklahoma"],[41,"Oregon"],[42,"Pennsylvania"],[44,"Rhode Island"],[45,"South Carolina"],[46,"South Dakota"],
+    [47,"Tennessee"],[48,"Texas"],[49,"Utah"],[50,"Vermont"],[51,"Virginia"],[53,"Washington"],[54,"West Virginia"],
+    [55,"Wisconsin"],[56,"Wyoming"]
+  ]);
 
-    // Icons + labels
-    map.addLayer({
-      id: 'hospitals',
-      type: 'symbol',
-      source: 'hospitals-tiles',
-      'source-layer': 'YOUR_SOURCE_LAYER',
-      minzoom: 2,
-      layout: {
-        'icon-image': 'hospital-15',
-        'icon-size': ['interpolate', ['linear'], ['zoom'], 2, 0.9, 12, 1.25, 16, 1.5],
-        'icon-allow-overlap': true,
-        'text-field': ['get', 'name'],
-        'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'],
-        'text-size': ['interpolate', ['linear'], ['zoom'], 2, 10, 12, 14],
-        'text-offset': [0, 1.1],
-        'text-anchor': 'top'
-      },
-      paint: {
-        'icon-color': '#ffcc33',
-        'text-color': '#ffcc33',
-        'text-halo-color': '#0b0f14',
-        'text-halo-width': 1
-      }
-    });
+  // Subtle color assignment per state
+  const color = d3.scaleOrdinal()
+    .domain(geo.features.map(f => f.id))
+    .range(palette);
 
-    // Cursor + popup
-    map.on('mouseenter', 'hospitals', () => map.getCanvas().style.cursor = 'pointer');
-    map.on('mouseleave', 'hospitals', () => map.getCanvas().style.cursor = '');
+  // Draw states
+  g.selectAll("path.state")
+    .data(geo.features)
+    .join("path")
+    .attr("class","state")
+    .attr("fill", d => color(d.id))
+    .attr("d", path)
+    .on("mousemove", (event, d) => showTip(event, nameById.get(d.id)))
+    .on("mouseleave", hideTip)
+    .on("click", (event, d) => selectState(d));
 
-    const popup = new mapboxgl.Popup({ offset: 10, closeButton: false });
-    map.on('click', 'hospitals', (e) => {
-      const f = e.features && e.features[0];
-      if (!f) return;
-      const p = f.properties || {};
-      const roles = tryParseArray(p.roles).join(', ');
-      const licenses = tryParseArray(p.licenses).join(', ');
-      const hiring = (p.hiring === true || p.hiring === 'true') ? 'Yes' :
-                     (p.hiring === false || p.hiring === 'false') ? 'No' : '—';
-      const cityState = [p.city, p.state || p.state_abbr].filter(Boolean).join(', ');
-      popup.setLngLat(e.lngLat).setHTML(`
-        <h3>${p.name || 'Hospital'}</h3>
-        <div class="meta">${cityState}</div>
-        <div><b>Hiring:</b> ${hiring}</div>
-        <div><b>Roles:</b> ${roles || '—'}</div>
-        <div><b>Licenses:</b> ${licenses || '—'}</div>
-        ${p.apply_url ? `<div style="margin-top:6px;"><a href="${p.apply_url}" target="_blank">Apply via NurseResume Lab →</a></div>` : ''}
-      `).addTo(map);
-    });
+  // Borders overlay for nice crisp separation
+  g.append("path")
+    .datum(borders)
+    .attr("class","borders")
+    .attr("d", path);
 
-    function tryParseArray(v) {
-      try {
-        if (Array.isArray(v)) return v;
-        return JSON.parse(v);
-      } catch(e) { return []; }
-    }
-  });
+  // Zoom & pan
+  const zoom = d3.zoom()
+    .scaleExtent([1, 8])
+    .on("zoom", (event) => g.attr("transform", event.transform));
+  svg.call(zoom);
+
+  // Tooltip helpers
+  const tip = d3.select("#tooltip");
+  function showTip(evt, label){
+    tip.text(label).style("left", evt.offsetX+"px").style("top", evt.offsetY+"px").style("opacity", 1);
+  }
+  function hideTip(){ tip.style("opacity", 0); }
+
+  // ---- Hospital dataset (placeholders auto-generated so the UI works immediately) ----
+  // Replace entries for any state with your real hospitals later; key is full state name.
+  const hospitalsByState = {}; // will fill with 10 per state programmatically
+
+  // Build 10 placeholder centers for each state
+  for (const f of geo.features){
+    const state = nameById.get(f.id);
+    const abbrev = state.split(" ").map(w=>w[0]).join("");
+    hospitalsByState[state] = Array.from({length:10}, (_,i)=>({
+      name: `${state} Medical Center ${i+1}`,
+      city: `City ${i+1}`,
+      roles: ["RN", "LPN", "ICU RN", "OR Nurse", "Scrub Tech"].slice(0, 3 + (i%3)),
+      status: (i%2 ? "Full-time" : "Contract")
+    }));
+  }
+
+  // When a state is selected: populate side panel and drop 10 map points
+  const list = d3.select("#list");
+  const title = d3.select("#panel-title");
+  const sub = d3.select("#panel-sub");
+
+  // Layer for hospital points
+  const pointsLayer = g.append("g");
+
+  function selectState(feature){
+    const state = nameById.get(feature.id);
+    title.text(state);
+    sub.text("10 hiring medical centers (demo data — replace with real listings anytime).");
+
+    // UI list
+    const items = hospitalsByState[state] || [];
+    list.selectAll("*").remove();
+    if (!items.length){
+      list.append("div").attr("class","empty-note").text("No entries yet.");
+    } else {
+      list.selectAll(".card")
+        .data(items)
+        .join("div")
+        .attr("class","card")
+        .html(d => `
+          <h3>${d.name}</h3>
+          <p class="meta">${d.city} · ${d.status}</p>
+          <div class="tags">${d.roles.map(r=>`<span class="tag">${r}</span>`).join("")}</div>
+        `);
+    }
+
+    // Map points: arrange around centroid with slight ring offsets
+    pointsLayer.selectAll("*").remove();
+    const centroid = path.centroid(feature);
+    if (!centroid || isNaN(centroid[0])) return;
+
+    const [cx, cy] = centroid;
+    const radius = 14; // base ring radius
+    const pts = d3.range(10).map(i=>{
+      const ring = i < 6 ? 0 : 1;           // 6 inner, 4 outer
+      const angle = (i / 6) * 2*Math.PI + (ring ? (i-6)/4 * 2*Math.PI/4 : 0);
+      const r = radius + (ring*10);
+      return [cx + Math.cos(angle)*r, cy + Math.sin(angle)*r];
+    });
+
+    pointsLayer.selectAll("circle.hospital")
+      .data(pts)
+      .join("circle")
+      .attr("class","hospital")
+      .attr("r", 3.6)
+      .attr("fill", "#ef4444")
+      .attr("cx", d=>d[0])
+      .attr("cy", d=>d[1])
+      .append("title")
+      .text((d,i)=> `${items[i]?.name || "Medical Center"} — ${state}`);
+  }
+
+  // Optional: auto-select a central state on load (e.g., Kansas)
+  const first = geo.features.find(f=>nameById.get(f.id)==="Kansas") || geo.features[0];
+  selectState(first);
+})();
 </script>
 </body>
 </html>
