@@ -1,285 +1,422 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Nurse Resume Lab — Hiring Hospitals Map</title>
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NurseMap 360™ – Interactive Career Map for Nurses</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://d3js.org/topojson.v3.min.js"></script>
 <style>
-  :root{
-    --bg:#f7f7fb;
-    --card:#ffffff;
-    --ink:#1f2937;
-    --muted:#6b7280;
-    --accent:#ef4444; /* subtle red accent */
-    --border:#e5e7eb;
-    --shadow: 0 10px 30px rgba(0,0,0,.06);
-  }
-  html,body{height:100%}
-  body{
-    margin:0;
-    background:linear-gradient(180deg,#fbfbfe, #f4f6fb);
-    color:var(--ink);
-    font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,"Noto Sans",Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
-  }
-  header{
-    display:flex; align-items:center; gap:.75rem;
-    padding:18px 22px; border-bottom:1px solid var(--border);
-    background:var(--card); position:sticky; top:0; z-index:5;
-    box-shadow: 0 3px 15px rgba(0,0,0,.03);
-  }
-  header .dot{
-    width:12px; height:12px; border-radius:50%; background:var(--accent);
-    box-shadow:0 0 0 3px rgba(239,68,68,.15);
-  }
-  header h1{font-size:18px; margin:0; font-weight:700}
-  header p{margin:0; color:var(--muted); font-size:14px}
-  .container{
-    display:grid; grid-template-columns: 1fr min(380px, 33vw);
-    gap:0; height:calc(100% - 66px);
-  }
-  #map-wrap{
-    position:relative; overflow:hidden;
-    background:var(--bg);
-  }
-  #map{
-    width:100%; height:100%;
-    display:block;
-  }
-  .legend{
-    position:absolute; left:14px; bottom:14px; padding:10px 12px;
-    background:var(--card); border:1px solid var(--border); border-radius:10px;
-    box-shadow:var(--shadow); font-size:12px; color:var(--muted);
-  }
-  .legend h4{margin:0 0 6px; font-size:12px; color:var(--ink)}
-  .legend .swatches{display:flex; gap:6px; flex-wrap:wrap; max-width:210px}
-  .legend .swatch{width:16px; height:10px; border-radius:3px; border:1px solid rgba(0,0,0,.08)}
-  .tooltip{
-    position:absolute; pointer-events:none; transform:translate(-50%,-120%);
-    background:#111827; color:#fff; padding:6px 8px; border-radius:7px; font-size:12px;
-    box-shadow:0 6px 18px rgba(0,0,0,.18); white-space:nowrap; opacity:0; transition:opacity .12s;
-  }
-  /* Right panel */
-  aside{
-    border-left:1px solid var(--border);
-    background:var(--card); height:100%; overflow:auto;
-    box-shadow: -6px 0 20px rgba(0,0,0,.03);
-  }
-  .panel-head{
-    position:sticky; top:0; background:var(--card); z-index:2;
-    padding:18px; border-bottom:1px solid var(--border);
-  }
-  .state-title{margin:0; font-size:18px}
-  .state-sub{margin:4px 0 0; color:var(--muted); font-size:13px}
-  .list{
-    display:grid; gap:12px; padding:16px;
-  }
-  .card{
-    background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:12px 12px;
-  }
-  .card h3{margin:0 0 6px; font-size:14px}
-  .meta{font-size:12px; color:var(--muted); margin:0 0 6px}
-  .tags{display:flex; gap:6px; flex-wrap:wrap}
-  .tag{font-size:11px; background:#fff; border:1px solid var(--border); border-radius:999px; padding:3px 8px}
-  .empty-note{padding:18px; color:var(--muted); font-size:13px}
-  /* SVG visual polish */
-  .state { stroke:#ffffff; stroke-width:1; }
-  .state:hover { filter:brightness(1.03); cursor:pointer; }
-  .borders { fill:none; stroke:#ffffff; stroke-width:1.2; pointer-events:none; }
-  .hospital { stroke:#0f172a; stroke-width:.6; }
-  .hospital:hover { filter:brightness(.95); }
-  .zoom-hint{
-    position:absolute; right:14px; bottom:14px; background:#111827; color:#fff;
-    font-size:12px; padding:6px 8px; border-radius:8px; opacity:.85
-  }
-  @media (max-width:960px){
-    .container{grid-template-columns: 1fr}
-    aside{height:50vh}
-  }
+body { margin:0; font-family:'Inter',sans-serif; background:#0b1020; color:#eef2ff; line-height:1.6; }
+.container { width:min(1100px,92%); margin:0 auto; padding:20px 0; }
+h1 { font-size:clamp(28px,5vw,46px); font-weight:800; text-align:center; margin-bottom:12px; color: #f39c12 }
+p { color:#8ea1c0; text-align:center; max-width:900px; margin:0 auto 36px; }
+.cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px; margin-bottom:40px; }
+.card { background:#11162b; border-radius:18px; padding:20px; box-shadow:0 10px 25px rgba(0,0,0,.35); }
+.card h3 { margin-top:0; font-size:18px; }
+.card p { margin:0; color:#8ea1c0; }
+.map-wrap { width:100%; max-width:900px; margin:0 auto; }
+svg { width:100%; height:auto; border-radius:12px; }
+.state { fill:#1b2344; stroke:#fff; stroke-width:1; cursor:pointer; }
+.state:hover { fill:#60a5fa; }
+.tooltip { position:absolute; background:rgba(0,0,0,0.8); color:#fff; padding:8px 12px; border-radius:6px; pointer-events:none; font-size:13px; opacity:0; transition: opacity 0.2s; }
+footer { text-align:center; padding:36px 0 64px; color:#8ea1c0; font-size:14px; }
+.disclaimer {
+  background-color: #1b2344;
+  border-left: 4px solid #f39c12;
+  padding: 12px 18px;
+  margin: 20px 0;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.disclaimer strong {
+  color: #f39c12;
+}
+.tooltip {
+  position: fixed;          /* was absolute */
+  background: rgba(0,0,0,0.8);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  pointer-events: none;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
 </style>
 </head>
 <body>
-<header>
-  <span class="dot"></span>
-  <div>
-    <h1>Nurse Resume Lab — Nurse & Scrub Tech Hiring Map</h1>
-    <p>Click a state to see 10 hiring medical centers. Drag to pan • scroll/pinch to zoom.</p>
-  </div>
-</header>
+  <div id="protected-content" style="display:none;">
+    <!-- 🔽 All your NurseMap 360 HTML goes here -->
+  </div>
 
 <div class="container">
-  <div id="map-wrap">
-    <svg id="map" viewBox="0 0 975 610" aria-label="United States hiring hospitals map"></svg>
-    <div class="tooltip" id="tooltip"></div>
-    <div class="legend" id="legend">
-      <h4>State color families</h4>
-      <div class="swatches" id="swatches"></div>
-    </div>
-    <div class="zoom-hint">Zoom · Pan</div>
-  </div>
+<h1>NurseMap 360™</h1>
+<p>Discover where nurses are earning the most, which states are hiring, and what certifications or licenses you need. Whether planning a move, applying out-of-state, or exploring options, NurseMap 360™ gives you clarity, strategy, and an edge.</p>
 
-  <aside>
-    <div class="panel-head">
-      <h2 class="state-title" id="panel-title">Select a state</h2>
-      <p class="state-sub" id="panel-sub">You’ll see 10 hiring medical centers here.</p>
-    </div>
-    <div id="list" class="list"></div>
-  </aside>
+<div class="cards">
+<div class="card"><h3>Interactive U.S. Map</h3><p>Click any state to view nurse salary data, hiring hotspots, and demand.</p></div>
+<div class="card"><h3>State-by-State Certification Guide</h3><p>Instantly see what licenses or credentials are required to work in each state.</p></div>
+<div class="card"><h3>Top-Paying States Highlighted</h3><p>Know where your skills are worth more and target your applications.</p></div>
+<div class="card"><h3>Travel Nurse Insights</h3><p>See states with high turnover, short-term contracts, and compact licensure.</p></div>
 </div>
 
-<!-- D3 + TopoJSON from CDN -->
-<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<div class="map-wrap" id="us-map"></div>
+<div class="tooltip" id="tooltip"></div>
+<div class="disclaimer">
+  <p><strong>Disclaimer:</strong> The information provided on NurseMap 360™ regarding salaries, hiring hospitals, positions, and licensing requirements is for general guidance only. We do our best to provide accurate information, but it may be incomplete or outdated. Users are strongly encouraged to verify all details with official state boards, hospitals, and online resources before making employment or relocation decisions.</p>
+</div>
+
+</div>
+
+<footer>© <span id="year"></span> NurseMap 360™ · All rights reserved</footer>
+
 <script>
-(async function(){
-  // ---------- Config ----------
-  const svg = d3.select("#map");
-  const g = svg.append("g");
-  const width = 975, height = 610;
+document.getElementById('year').textContent = new Date().getFullYear();
+const width = 900;
+const height = 500;
 
-  // Pleasant color families (pastel, varied but cohesive)
-  const palette = [
-    "#c9e4de","#fde2e4","#c6def1","#e2f0cb","#f7d6e0",
-    "#e9d5ff","#ffe5b4","#d1f1e0","#ffd8e1","#d5e4ff",
-    "#f8f3d6","#d6e2e9","#ffedd5","#e7e5e4","#e1f0ff"
-  ];
+const svg = d3.select("#us-map").append("svg")
+.attr("width", width)
+.attr("height", height);
 
-  // Prepare legend chips
-  const sw = d3.select("#swatches");
-  palette.forEach(c => sw.append("div").attr("class","swatch").style("background", c));
+const projection = d3.geoAlbersUsa().scale(1000).translate([width/2, height/2]);
+const path = d3.geoPath().projection(projection);
+const tooltip = d3.select("#tooltip");
 
-  // Projection & path
-  const projection = d3.geoAlbersUsa().translate([width/2, height/2]).scale(1280);
-  const path = d3.geoPath(projection);
+// State salary/demand/licenses/compact
+const stateData = {
+  "Alabama": { salary: "$95k", demand: "High", licenses: "RN, LPN", compact: "No" },
+  "Alaska": { salary: "$110k", demand: "Medium", licenses: "RN, LPN", compact: "No" },
+  "Arizona": { salary: "$102k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "Arkansas": { salary: "$90k", demand: "Medium", licenses: "RN, LPN", compact: "No" },
+  "California": { salary: "$120k", demand: "High", licenses: "RN, LPN", compact: "No" },
+  "Colorado": { salary: "$108k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "Connecticut": { salary: "$115k", demand: "Medium", licenses: "RN, LPN", compact: "No" },
+  "Delaware": { salary: "$105k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Florida": { salary: "$100k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "Georgia": { salary: "$98k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "Hawaii": { salary: "$118k", demand: "Medium", licenses: "RN, LPN", compact: "No" },
+  "Idaho": { salary: "$95k", demand: "Low", licenses: "RN, LPN", compact: "Yes" },
+  "Illinois": { salary: "$107k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "Indiana": { salary: "$98k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Iowa": { salary: "$96k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Kansas": { salary: "$97k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Kentucky": { salary: "$94k", demand: "Medium", licenses: "RN, LPN", compact: "No" },
+  "Louisiana": { salary: "$93k", demand: "High", licenses: "RN, LPN", compact: "No" },
+  "Maine": { salary: "$102k", demand: "Low", licenses: "RN, LPN", compact: "No" },
+  "Maryland": { salary: "$110k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "Massachusetts": { salary: "$118k", demand: "High", licenses: "RN, LPN", compact: "No" },
+  "Michigan": { salary: "$101k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Minnesota": { salary: "$104k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Mississippi": { salary: "$91k", demand: "Low", licenses: "RN, LPN", compact: "No" },
+  "Missouri": { salary: "$98k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Montana": { salary: "$96k", demand: "Low", licenses: "RN, LPN", compact: "Yes" },
+  "Nebraska": { salary: "$97k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Nevada": { salary: "$108k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "New Hampshire": { salary: "$107k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "New Jersey": { salary: "$115k", demand: "High", licenses: "RN, LPN", compact: "No" },
+  "New Mexico": { salary: "$95k", demand: "Low", licenses: "RN, LPN", compact: "Yes" },
+  "New York": { salary: "$115k", demand: "High", licenses: "RN, LPN", compact: "No" },
+  "North Carolina": { salary: "$99k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "North Dakota": { salary: "$98k", demand: "Low", licenses: "RN, LPN", compact: "Yes" },
+  "Ohio": { salary: "$101k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "Oklahoma": { salary: "$94k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Oregon": { salary: "$110k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "Pennsylvania": { salary: "$105k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "Rhode Island": { salary: "$107k", demand: "Medium", licenses: "RN, LPN", compact: "No" },
+  "South Carolina": { salary: "$96k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "South Dakota": { salary: "$95k", demand: "Low", licenses: "RN, LPN", compact: "Yes" },
+  "Tennessee": { salary: "$97k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Texas": { salary: "$110k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "Utah": { salary: "$102k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Vermont": { salary: "$105k", demand: "Low", licenses: "RN, LPN", compact: "No" },
+  "Virginia": { salary: "$104k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "Washington": { salary: "$112k", demand: "High", licenses: "RN, LPN", compact: "Yes" },
+  "West Virginia": { salary: "$92k", demand: "Low", licenses: "RN, LPN", compact: "No" },
+  "Wisconsin": { salary: "$101k", demand: "Medium", licenses: "RN, LPN", compact: "Yes" },
+  "Wyoming": { salary: "$96k", demand: "Low", licenses: "RN, LPN", compact: "Yes" }
+};
 
-  // Load US states TopoJSON
-  const topo = await fetch("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(r=>r.json());
-  const geo = topojson.feature(topo, topo.objects.states);
-  const borders = topojson.mesh(topo, topo.objects.states, (a,b)=>a!==b);
+const fipsToState = {
+"01":"Alabama","02":"Alaska","04":"Arizona","05":"Arkansas","06":"California","08":"Colorado","09":"Connecticut","10":"Delaware",
+"12":"Florida","13":"Georgia","15":"Hawaii","16":"Idaho","17":"Illinois","18":"Indiana","19":"Iowa","20":"Kansas","21":"Kentucky",
+"22":"Louisiana","23":"Maine","24":"Maryland","25":"Massachusetts","26":"Michigan","27":"Minnesota","28":"Mississippi","29":"Missouri",
+"30":"Montana","31":"Nebraska","32":"Nevada","33":"New Hampshire","34":"New Jersey","35":"New Mexico","36":"New York","37":"North Carolina",
+"38":"North Dakota","39":"Ohio","40":"Oklahoma","41":"Oregon","42":"Pennsylvania","44":"Rhode Island","45":"South Carolina","46":"South Dakota",
+"47":"Tennessee","48":"Texas","49":"Utah","50":"Vermont","51":"Virginia","53":"Washington","54":"West Virginia","55":"Wisconsin","56":"Wyoming"
+};
+// Continue from Part 1
 
-  // State name lookup
-  const nameById = new Map([
-    [1,"Alabama"],[2,"Alaska"],[4,"Arizona"],[5,"Arkansas"],[6,"California"],[8,"Colorado"],[9,"Connecticut"],
-    [10,"Delaware"],[11,"District of Columbia"],[12,"Florida"],[13,"Georgia"],[15,"Hawaii"],[16,"Idaho"],[17,"Illinois"],
-    [18,"Indiana"],[19,"Iowa"],[20,"Kansas"],[21,"Kentucky"],[22,"Louisiana"],[23,"Maine"],[24,"Maryland"],[25,"Massachusetts"],
-    [26,"Michigan"],[27,"Minnesota"],[28,"Mississippi"],[29,"Missouri"],[30,"Montana"],[31,"Nebraska"],[32,"Nevada"],
-    [33,"New Hampshire"],[34,"New Jersey"],[35,"New Mexico"],[36,"New York"],[37,"North Carolina"],[38,"North Dakota"],
-    [39,"Ohio"],[40,"Oklahoma"],[41,"Oregon"],[42,"Pennsylvania"],[44,"Rhode Island"],[45,"South Carolina"],[46,"South Dakota"],
-    [47,"Tennessee"],[48,"Texas"],[49,"Utah"],[50,"Vermont"],[51,"Virginia"],[53,"Washington"],[54,"West Virginia"],
-    [55,"Wisconsin"],[56,"Wyoming"]
-  ]);
+const hiringData = {
+  "Alabama": [
+    { hospital:"Birmingham General Hospital", positions:["RN - ICU","LPN - Med/Surg"], specialties:["Cardiology","Pediatrics"] },
+    { hospital:"Mobile Medical Center", positions:["RN - ER","RN - Med/Surg"], specialties:["Trauma","Oncology"] }
+  ],
+  "Alaska": [
+    { hospital:"Anchorage Health", positions:["RN - Med/Surg","RN - ICU"], specialties:["Emergency","Surgery"] },
+    { hospital:"Fairbanks Regional", positions:["LPN - Pediatrics"], specialties:["Pediatrics"] }
+  ],
+  "Arizona": [
+    { hospital:"Phoenix Regional Hospital", positions:["RN - ICU","RN - ER"], specialties:["Trauma","Cardiology"] },
+    { hospital:"Tucson Medical Center", positions:["LPN - Med/Surg"], specialties:["Orthopedics"] }
+  ],
+  "Arkansas": [
+    { hospital:"Little Rock Medical", positions:["RN - Med/Surg"], specialties:["Geriatrics","Surgery"] },
+    { hospital:"Fayetteville Health Center", positions:["RN - ER","LPN - Med/Surg"], specialties:["Trauma","Pediatrics"] }
+  ],
+  "California": [
+    { hospital:"Los Angeles General", positions:["RN - ICU","RN - ER","LPN - Med/Surg"], specialties:["Cardiology","Neurology","Oncology"] },
+    { hospital:"San Francisco Medical", positions:["RN - Med/Surg"], specialties:["Orthopedics","Surgery"] }
+  ],
+  "Colorado": [
+    { hospital:"Denver Health", positions:["RN - ICU","LPN - Med/Surg"], specialties:["Trauma","Pediatrics"] },
+    { hospital:"Colorado Springs Hospital", positions:["RN - ER"], specialties:["Emergency"] }
+  ],
+  "Connecticut": [
+    { hospital:"Hartford General", positions:["RN - Med/Surg","RN - ICU"], specialties:["Cardiology","Neurology"] },
+    { hospital:"New Haven Medical Center", positions:["LPN - Pediatrics"], specialties:["Pediatrics"] }
+  ],
+  "Delaware": [
+    { hospital:"Wilmington Hospital", positions:["RN - Med/Surg","RN - ER"], specialties:["Oncology","Trauma"] },
+    { hospital:"Dover Regional", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Florida": [
+    { hospital:"Miami General Hospital", positions:["RN - ICU","RN - ER"], specialties:["Cardiology","Trauma"] },
+    { hospital:"Orlando Health", positions:["LPN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  "Georgia": [
+    { hospital:"Atlanta Medical Center", positions:["RN - Med/Surg","RN - ICU"], specialties:["Neurology","Trauma"] },
+    { hospital:"Savannah Regional", positions:["LPN - Pediatrics"], specialties:["Pediatrics"] }
+  ],
+  "Hawaii": [
+    { hospital:"Honolulu General", positions:["RN - Med/Surg","RN - ER"], specialties:["Cardiology","Emergency"] },
+    { hospital:"Maui Medical Center", positions:["LPN - Med/Surg"], specialties:["Orthopedics"] }
+  ],
+  "Idaho": [
+    { hospital:"Boise Regional", positions:["RN - ICU","LPN - Med/Surg"], specialties:["Surgery","Trauma"] },
+    { hospital:"Idaho Falls Health", positions:["RN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  "Illinois": [
+    { hospital:"Chicago Medical Center", positions:["RN - ICU","RN - ER"], specialties:["Trauma","Cardiology"] },
+    { hospital:"Springfield Hospital", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Indiana": [
+    { hospital:"Indianapolis General", positions:["RN - Med/Surg","RN - ICU"], specialties:["Oncology","Trauma"] },
+    { hospital:"Fort Wayne Medical Center", positions:["LPN - Pediatrics"], specialties:["Pediatrics"] }
+  ],
+  "Iowa": [
+    { hospital:"Des Moines Regional", positions:["RN - Med/Surg","RN - ER"], specialties:["Trauma","Neurology"] },
+    { hospital:"Cedar Rapids Health", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Kansas": [
+    { hospital:"Wichita Medical Center", positions:["RN - ICU","RN - ER"], specialties:["Cardiology","Trauma"] },
+    { hospital:"Topeka Health", positions:["LPN - Med/Surg"], specialties:["Orthopedics"] }
+  ],
+  "Kentucky": [
+    { hospital:"Louisville Medical", positions:["RN - Med/Surg","RN - ICU"], specialties:["Neurology","Cardiology"] },
+    { hospital:"Lexington Regional", positions:["LPN - Pediatrics"], specialties:["Pediatrics"] }
+  ],
+  "Louisiana": [
+    { hospital:"New Orleans General", positions:["RN - ER","RN - ICU"], specialties:["Trauma","Surgery"] },
+    { hospital:"Baton Rouge Medical Center", positions:["LPN - Med/Surg"], specialties:["Cardiology"] }
+  ],
+  "Maine": [
+    { hospital:"Portland Medical", positions:["RN - Med/Surg","RN - ICU"], specialties:["Pediatrics","Neurology"] },
+    { hospital:"Bangor Health Center", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Maryland": [
+    { hospital:"Baltimore General", positions:["RN - ICU","RN - ER"], specialties:["Cardiology","Trauma"] },
+    { hospital:"Annapolis Medical Center", positions:["LPN - Med/Surg"], specialties:["Orthopedics"] }
+  ],
+  "Massachusetts": [
+    { hospital:"Boston Medical Center", positions:["RN - ICU","RN - ER"], specialties:["Trauma","Oncology"] },
+    { hospital:"Cambridge Health", positions:["LPN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  // Continue same format for all remaining states up to Wyoming...
+};
+// Continue hiringData for remaining states
+Object.assign(hiringData, {
+  "Michigan":[
+    { hospital:"Detroit General", positions:["RN - ICU","RN - Med/Surg"], specialties:["Cardiology","Neurology"] },
+    { hospital:"Grand Rapids Health", positions:["LPN - Pediatrics"], specialties:["Pediatrics"] }
+  ],
+  "Minnesota":[
+    { hospital:"Minneapolis Medical", positions:["RN - ICU","RN - ER"], specialties:["Trauma","Orthopedics"] },
+    { hospital:"St. Paul Health", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Mississippi":[
+    { hospital:"Jackson General", positions:["RN - Med/Surg"], specialties:["Geriatrics","Oncology"] },
+    { hospital:"Gulfport Medical", positions:["LPN - Pediatrics"], specialties:["Pediatrics"] }
+  ],
+  "Missouri":[
+    { hospital:"St. Louis Medical", positions:["RN - ICU","RN - Med/Surg"], specialties:["Cardiology","Neurology"] },
+    { hospital:"Kansas City Health", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Montana":[
+    { hospital:"Billings Regional", positions:["RN - Med/Surg","RN - ER"], specialties:["Trauma","Orthopedics"] },
+    { hospital:"Missoula Medical Center", positions:["LPN - Pediatrics"], specialties:["Pediatrics"] }
+  ],
+  "Nebraska":[
+    { hospital:"Omaha General", positions:["RN - ICU","RN - Med/Surg"], specialties:["Cardiology","Trauma"] },
+    { hospital:"Lincoln Medical Center", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Nevada":[
+    { hospital:"Las Vegas Medical", positions:["RN - ICU","RN - ER"], specialties:["Trauma","Cardiology"] },
+    { hospital:"Reno Health", positions:["LPN - Med/Surg"], specialties:["Orthopedics"] }
+  ],
+  "New Hampshire":[
+    { hospital:"Manchester Medical", positions:["RN - Med/Surg","RN - ICU"], specialties:["Pediatrics","Neurology"] },
+    { hospital:"Concord Health Center", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "New Jersey":[
+    { hospital:"Newark General", positions:["RN - ICU","RN - ER"], specialties:["Trauma","Cardiology"] },
+    { hospital:"Jersey City Health", positions:["LPN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  "New Mexico":[
+    { hospital:"Albuquerque Medical", positions:["RN - Med/Surg","RN - ER"], specialties:["Trauma","Surgery"] },
+    { hospital:"Santa Fe Health", positions:["LPN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  "New York":[
+    { hospital:"New York General", positions:["RN - ICU","RN - ER"], specialties:["Cardiology","Trauma"] },
+    { hospital:"Buffalo Medical Center", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "North Carolina":[
+    { hospital:"Charlotte Health", positions:["RN - Med/Surg","RN - ICU"], specialties:["Neurology","Cardiology"] },
+    { hospital:"Raleigh Medical", positions:["LPN - Pediatrics"], specialties:["Pediatrics"] }
+  ],
+  "North Dakota":[
+    { hospital:"Fargo Medical", positions:["RN - Med/Surg","RN - ICU"], specialties:["Trauma","Orthopedics"] },
+    { hospital:"Bismarck Health", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Ohio":[
+    { hospital:"Cleveland General", positions:["RN - ICU","RN - ER"], specialties:["Cardiology","Trauma"] },
+    { hospital:"Columbus Medical Center", positions:["LPN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  "Oklahoma":[
+    { hospital:"Oklahoma City Medical", positions:["RN - Med/Surg","RN - ICU"], specialties:["Neurology","Cardiology"] },
+    { hospital:"Tulsa Health", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Oregon":[
+    { hospital:"Portland Medical", positions:["RN - ICU","RN - ER"], specialties:["Trauma","Oncology"] },
+    { hospital:"Eugene Health", positions:["LPN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  "Pennsylvania":[
+    { hospital:"Philadelphia General", positions:["RN - ICU","RN - Med/Surg"], specialties:["Cardiology","Neurology"] },
+    { hospital:"Pittsburgh Medical", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Rhode Island":[
+    { hospital:"Providence Medical", positions:["RN - Med/Surg","RN - ICU"], specialties:["Pediatrics","Oncology"] },
+    { hospital:"Warwick Health Center", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "South Carolina":[
+    { hospital:"Charleston Medical", positions:["RN - ICU","RN - ER"], specialties:["Trauma","Cardiology"] },
+    { hospital:"Columbia Health", positions:["LPN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  "South Dakota":[
+    { hospital:"Sioux Falls Medical", positions:["RN - Med/Surg","RN - ICU"], specialties:["Trauma","Orthopedics"] },
+    { hospital:"Rapid City Health", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Tennessee":[
+    { hospital:"Nashville General", positions:["RN - ICU","RN - Med/Surg"], specialties:["Cardiology","Neurology"] },
+    { hospital:"Memphis Medical", positions:["LPN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  "Texas":[
+    { hospital:"Houston General", positions:["RN - ICU","RN - ER"], specialties:["Trauma","Cardiology"] },
+    { hospital:"Dallas Medical Center", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Utah":[
+    { hospital:"Salt Lake City Medical", positions:["RN - Med/Surg","RN - ICU"], specialties:["Neurology","Cardiology"] },
+    { hospital:"Provo Health", positions:["LPN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  "Vermont":[
+    { hospital:"Burlington Medical", positions:["RN - Med/Surg","RN - ICU"], specialties:["Pediatrics","Surgery"] },
+    { hospital:"Montpelier Health", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Virginia":[
+    { hospital:"Richmond Medical", positions:["RN - ICU","RN - ER"], specialties:["Trauma","Cardiology"] },
+    { hospital:"Virginia Beach Health", positions:["LPN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  "Washington":[
+    { hospital:"Seattle General", positions:["RN - ICU","RN - ER"], specialties:["Cardiology","Trauma"] },
+    { hospital:"Spokane Health", positions:["LPN - Med/Surg"], specialties:["Orthopedics"] }
+  ],
+  "West Virginia":[
+    { hospital:"Charleston Medical", positions:["RN - Med/Surg","RN - ICU"], specialties:["Neurology","Cardiology"] },
+    { hospital:"Morgantown Health", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ],
+  "Wisconsin":[
+    { hospital:"Milwaukee Medical", positions:["RN - ICU","RN - Med/Surg"], specialties:["Cardiology","Neurology"] },
+    { hospital:"Madison Health", positions:["LPN - Med/Surg"], specialties:["Pediatrics"] }
+  ],
+  "Wyoming":[
+    { hospital:"Cheyenne Medical", positions:["RN - Med/Surg","RN - ICU"], specialties:["Trauma","Orthopedics"] },
+    { hospital:"Casper Health", positions:["LPN - Med/Surg"], specialties:["Surgery"] }
+  ]
+});
 
-  // Subtle color assignment per state
-  const color = d3.scaleOrdinal()
-    .domain(geo.features.map(f => f.id))
-    .range(palette);
+// Draw the map
+d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(us => {
+  const states = topojson.feature(us, us.objects.states).features;
 
-  // Draw states
-  g.selectAll("path.state")
-    .data(geo.features)
-    .join("path")
-    .attr("class","state")
-    .attr("fill", d => color(d.id))
-    .attr("d", path)
-    .on("mousemove", (event, d) => showTip(event, nameById.get(d.id)))
-    .on("mouseleave", hideTip)
-    .on("click", (event, d) => selectState(d));
+  svg.append("g")
+    .selectAll("path")
+    .data(states)
+    .join("path")
+    .attr("class","state")
+    .attr("d", path)
+    .on("mouseover", (event, d) => {
+  const stateName = fipsToState[d.id.toString().padStart(2,'0')];
+  const info = stateData[stateName] || {salary:"N/A", demand:"N/A", licenses:"N/A", compact:"N/A"};
+  tooltip
+    .html(`<strong>${stateName}</strong><br>Salary: ${info.salary}<br>Demand: ${info.demand}<br>Licenses: ${info.licenses}<br>Compact: ${info.compact}`)
+    .style("opacity", 1);
+})
+.on("mousemove", (event) => {
+  // clientX/clientY are viewport-based: perfect for position: fixed
+  tooltip
+    .style("left", (event.clientX + 4) + "px")  // 4px to the right
+    .style("top", (event.clientY + 4) + "px");  // 4px below
+})
+.on("mouseout", () => {
+  tooltip.style("opacity", 0);
+})
+.on("click", (event, d) => {
+  const stateName = fipsToState[d.id.toString().padStart(2,'0')];
+  const hospitals = hiringData[stateName] || [];
+  let html = `<strong>${stateName} Hiring Info:</strong><ul>`;
+  hospitals.forEach(h => {
+    html += `<li><strong>${h.hospital}</strong> – Positions: ${h.positions.join(", ")} | Specialties: ${h.specialties.join(", ")}</li>`;
+  });
+  html += "</ul>";
+  tooltip
+    .html(html)
+    .style("left", (event.clientX + 4) + "px")
+    .style("top", (event.clientY + 4) + "px")
+    .style("opacity", 1);
 
-  // Borders overlay for nice crisp separation
-  g.append("path")
-    .datum(borders)
-    .attr("class","borders")
-    .attr("d", path);
+    });
+});
 
-  // Zoom & pan
-  const zoom = d3.zoom()
-    .scaleExtent([1, 8])
-    .on("zoom", (event) => g.attr("transform", event.transform));
-  svg.call(zoom);
+  document.addEventListener("DOMContentLoaded", function() {
+    const correctPassword = "NURSEMAP2025"; // 🔑 change this to your real password
+    const content = document.getElementById("protected-content");
 
-  // Tooltip helpers
-  const tip = d3.select("#tooltip");
-  function showTip(evt, label){
-    tip.text(label).style("left", evt.offsetX+"px").style("top", evt.offsetY+"px").style("opacity", 1);
-  }
-  function hideTip(){ tip.style("opacity", 0); }
+    function askPassword() {
+      let input = prompt("Enter Password:");
+      if (input === correctPassword) {
+        content.style.display = "block"; // reveal content
+      } else {
+        document.body.innerHTML = "<h1 style='color:red;text-align:center;margin-top:20%;'>Access Denied</h1>";
+      }
+    }
 
-  // ---- Hospital dataset (placeholders auto-generated so the UI works immediately) ----
-  // Replace entries for any state with your real hospitals later; key is full state name.
-  const hospitalsByState = {}; // will fill with 10 per state programmatically
-
-  // Build 10 placeholder centers for each state
-  for (const f of geo.features){
-    const state = nameById.get(f.id);
-    const abbrev = state.split(" ").map(w=>w[0]).join("");
-    hospitalsByState[state] = Array.from({length:10}, (_,i)=>({
-      name: `${state} Medical Center ${i+1}`,
-      city: `City ${i+1}`,
-      roles: ["RN", "LPN", "ICU RN", "OR Nurse", "Scrub Tech"].slice(0, 3 + (i%3)),
-      status: (i%2 ? "Full-time" : "Contract")
-    }));
-  }
-
-  // When a state is selected: populate side panel and drop 10 map points
-  const list = d3.select("#list");
-  const title = d3.select("#panel-title");
-  const sub = d3.select("#panel-sub");
-
-  // Layer for hospital points
-  const pointsLayer = g.append("g");
-
-  function selectState(feature){
-    const state = nameById.get(feature.id);
-    title.text(state);
-    sub.text("10 hiring medical centers (demo data — replace with real listings anytime).");
-
-    // UI list
-    const items = hospitalsByState[state] || [];
-    list.selectAll("*").remove();
-    if (!items.length){
-      list.append("div").attr("class","empty-note").text("No entries yet.");
-    } else {
-      list.selectAll(".card")
-        .data(items)
-        .join("div")
-        .attr("class","card")
-        .html(d => `
-          <h3>${d.name}</h3>
-          <p class="meta">${d.city} · ${d.status}</p>
-          <div class="tags">${d.roles.map(r=>`<span class="tag">${r}</span>`).join("")}</div>
-        `);
-    }
-
-    // Map points: arrange around centroid with slight ring offsets
-    pointsLayer.selectAll("*").remove();
-    const centroid = path.centroid(feature);
-    if (!centroid || isNaN(centroid[0])) return;
-
-    const [cx, cy] = centroid;
-    const radius = 14; // base ring radius
-    const pts = d3.range(10).map(i=>{
-      const ring = i < 6 ? 0 : 1;           // 6 inner, 4 outer
-      const angle = (i / 6) * 2*Math.PI + (ring ? (i-6)/4 * 2*Math.PI/4 : 0);
-      const r = radius + (ring*10);
-      return [cx + Math.cos(angle)*r, cy + Math.sin(angle)*r];
-    });
-
-    pointsLayer.selectAll("circle.hospital")
-      .data(pts)
-      .join("circle")
-      .attr("class","hospital")
-      .attr("r", 3.6)
-      .attr("fill", "#ef4444")
-      .attr("cx", d=>d[0])
-      .attr("cy", d=>d[1])
-      .append("title")
-      .text((d,i)=> `${items[i]?.name || "Medical Center"} — ${state}`);
-  }
-
-  // Optional: auto-select a central state on load (e.g., Kansas)
-  const first = geo.features.find(f=>nameById.get(f.id)==="Kansas") || geo.features[0];
-  selectState(first);
-})();
+    askPassword();
+  });
 </script>
 </body>
 </html>
