@@ -68,6 +68,10 @@
   .tooltip[data-show="true"] { opacity: 1; }
   .tooltip h4 { margin: 0 0 6px; font-size: 15px; }
   .tooltip ul { margin: 6px 0 0; padding-left: 18px; max-height: 40vh; overflow: auto; }
+  .tooltip .meta{display:grid;grid-template-columns:auto 1fr;column-gap:8px;row-gap:4px;font-size:14px;margin:6px 0 8px}
+  .tooltip .meta .key{color:#a9b6da}
+  .tooltip .meta .val{color:#cdd5f3}
+  .tooltip hr{border:0;height:1px;background:rgba(255,255,255,.12);margin:8px 0}
 
   .disclaimer {
     background-color: #1b2344;
@@ -88,6 +92,13 @@
     .cards { grid-template-columns: 1fr 1fr; gap: 10px; }
     .card { padding: 12px; border-radius: 14px; }
   }
+</style>
+<style>
+  /* Selected state fill + remove default focus outline */
+  .state:focus{outline:none}
+  .state:focus-visible{outline:none}
+  .state.selected{fill:var(--accent)!important}
+  .state.selected:hover{fill:var(--accent)!important}
 </style>
 </head>
 <body>
@@ -129,6 +140,7 @@
   const tooltip = d3.select('#tooltip');
 
   let svg, g, projection, path, statesFeat;
+  let selectedId = null;
   let pinned = false; // when true, tooltip stays until outside tap
 
   // Data blocks (salary/demand/licenses/compact + fips map)
@@ -454,13 +466,34 @@
               if (!pinned) hideTooltip();
             })
             .on('click', (event, d) => {
-              const name = fipsToState[String(d.id).padStart(2, '0')];
+              const id = d.id;
+              if (selectedId === id) {
+                // Toggle off selection on second tap/click
+                selectedId = null;
+                g.selectAll('path.state').classed('selected', dd => dd.id === selectedId);
+                pinned = false;
+                hideTooltip();
+                return;
+              }
+              const name = fipsToState[String(id).padStart(2, '0')];
+              selectedId = id;
+              g.selectAll('path.state').classed('selected', dd => dd.id === selectedId);
               showDetails(name, event.clientX, event.clientY);
             })
             .on('keydown', (event, d) => {
               if (event.key === 'Enter' || event.key === ' ') {
-                const name = fipsToState[String(d.id).padStart(2, '0')];
-                // center tooltip for keyboard interactions
+                const id = d.id;
+                if (selectedId === id) {
+                  selectedId = null;
+                  g.selectAll('path.state').classed('selected', dd => dd.id === selectedId);
+                  pinned = false;
+                  hideTooltip();
+                  event.preventDefault();
+                  return;
+                }
+                const name = fipsToState[String(id).padStart(2, '0')];
+                selectedId = id;
+                g.selectAll('path.state').classed('selected', dd => dd.id === selectedId);
                 const rect = svg.node().getBoundingClientRect();
                 showDetails(name, rect.left + rect.width / 2, rect.top + rect.height / 2);
                 event.preventDefault();
@@ -468,6 +501,8 @@
             }),
         update => update.attr('d', path)
       );
+      // reflect selection after (re)render
+      g.selectAll('path.state').classed('selected', d => d.id === selectedId);
   }
 
   function clampToViewport(x, y) {
@@ -499,13 +534,28 @@
   }
 
   function showDetails(stateName, x, y) {
-    const hospitals = (hiringData[stateName] || []).slice(0, 6); // limit length for mobile
-    let html = `<h4>${stateName} – Hiring</h4>`;
+    const info = stateData[stateName] || { salary: 'N/A', demand: 'N/A', licenses: 'N/A', compact: 'N/A' };
+    const hospitals = (hiringData[stateName] || []).slice(0, 6);
+
+    let meta = `
+      <div class="meta">
+        <div class="key">Salary</div><div class="val">${info.salary}</div>
+        <div class="key">Demand</div><div class="val">${info.demand}</div>
+        <div class="key">Licenses</div><div class="val">${info.licenses}</div>
+        <div class="key">Compact</div><div class="val">${info.compact}</div>
+      </div>`;
+
+    let html = `<h4>${stateName}</h4>` + meta + `<hr/>`;
+
     if (hospitals.length) {
-      html += '<ul>' + hospitals.map(h => `<li><strong>${h.hospital}</strong>: ${h.positions.join(', ')} — <em>${h.specialties.join(', ')}</em></li>`).join('') + '</ul>';
+      html += '<div><strong>Hiring Hospitals</strong></div>';
+      html += '<ul>' + hospitals
+        .map(h => `<li><strong>${h.hospital}</strong>: ${h.positions.join(', ')} — <em>${h.specialties.join(', ')}</em></li>`)
+        .join('') + '</ul>';
     } else {
-      html += '<div>No data available.</div>';
+      html += '<div>No hiring data available.</div>';
     }
+
     tooltip.html(html).attr('data-show', 'true').attr('aria-hidden', 'false');
     pinned = true;
     positionTooltip(x, y);
@@ -522,6 +572,9 @@
     if (!insideMap) {
       pinned = false;
       hideTooltip();
+      // Also clear selection when tapping outside
+      selectedId = null;
+      if (g) g.selectAll('path.state').classed('selected', d => d.id === selectedId);
     }
   }, { passive: true });
 
